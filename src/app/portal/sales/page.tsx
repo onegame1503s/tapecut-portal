@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, DollarSign, LogOut, Loader2, ArrowUpRight, UserCheck, Target, ExternalLink, ChevronDown, ChevronUp, CheckCircle, XCircle, MapPin, Globe, CreditCard } from "lucide-react";
+import { PlusCircle, DollarSign, LogOut, Loader2, ArrowUpRight, UserCheck, Target, ExternalLink, ChevronDown, ChevronUp, CheckCircle, XCircle, MapPin, Globe, CreditCard, Bell, MessageSquare, Clock, HelpCircle, Send, X, Shield } from "lucide-react";
 
 export default function SalesDashboard() {
   const [deals, setDeals] = useState<any[]>([]);
@@ -14,6 +14,11 @@ export default function SalesDashboard() {
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
   const router = useRouter();
 
+  // --- NEW: NOTIFICATIONS STATE ---
+  const [messages, setMessages] = useState<any[]>([]);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [customReplies, setCustomReplies] = useState<{[key: string]: string}>({});
+
   const [form, setForm] = useState({
     client_name: "", client_phone: "", contract_value: "",
     scope: "Full-Stack Web App (Next.js)", buffer_time: "3-5 Business Days", description: "",
@@ -21,15 +26,23 @@ export default function SalesDashboard() {
 
   const fetchData = async () => {
     try {
-      const [dealRes, leadRes, pricingRes] = await Promise.all([
+      const [dealRes, leadRes, pricingRes, msgRes] = await Promise.all([
         fetch("/api/portal/deals"),
         fetch("/api/portal/leads"),
-        fetch("/api/portal/pricing")
+        fetch("/api/portal/pricing"),
+        fetch("/api/portal/messages") // Fetches inbox
       ]);
 
       const dealData = await dealRes.json(); if (dealData.success) setDeals(dealData.deals);
       const leadData = await leadRes.json(); if (leadData.success) setLeads(leadData.leads);
       const pricingData = await pricingRes.json(); if (pricingData.success) setPricing(pricingData.pricing);
+      
+      // Fetch messages without crashing if the endpoint isn't fully ready
+      try {
+        const msgData = await msgRes.json();
+        if (msgData.success && msgData.messages) setMessages(msgData.messages);
+      } catch (e) { console.log("Messages API not yet deployed"); }
+      
     } catch {
       console.error("Failed to fetch dashboard data");
     } finally {
@@ -62,6 +75,20 @@ export default function SalesDashboard() {
     router.push("/portal/login");
   };
 
+  // --- NEW: SEND REPLY ---
+  const handleSendReply = async (msgId: string, text: string) => {
+    try {
+      await fetch("/api/portal/messages", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ sender_id: "sales", receiver_id: "admin", message_text: text }) 
+      });
+      // Optionally mark as read or remove from UI locally
+      setMessages(prev => prev.filter(m => m.id !== msgId));
+      alert("Response dispatched to admin.");
+    } catch { alert("Network error dispatching response."); }
+  };
+
   const totalSalesRevenue = deals.reduce((acc, deal) => acc + Number(deal.contract_value || 0), 0);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#050505]"><Loader2 className="w-8 h-8 animate-spin text-white" /></div>;
@@ -78,7 +105,18 @@ export default function SalesDashboard() {
             <p className="text-xs text-neutral-500">Deal Pipeline & Contract Execution Ledger</p>
           </div>
         </div>
-        <button onClick={handleLogout} className="flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors"><LogOut className="w-4 h-4" /> Terminate Session</button>
+        <div className="flex items-center gap-4">
+          {/* NEW: NOTIFICATIONS BELL */}
+          <button onClick={() => setShowNotifs(true)} className="relative flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors">
+            <Bell className="w-4 h-4 text-blue-400" /> 
+            {messages.length > 0 && <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[9px] w-5 h-5 flex items-center justify-center rounded-full font-black shadow-lg shadow-red-900/50">{messages.length}</span>}
+            Comms
+          </button>
+          
+          <button onClick={handleLogout} className="flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors">
+            <LogOut className="w-4 h-4" /> Terminate
+          </button>
+        </div>
       </div>
 
       {/* Metrics Bar */}
@@ -93,7 +131,7 @@ export default function SalesDashboard() {
         </div>
       </div>
 
-      {/* NEW: PRICING MATRIX REFERENCE */}
+      {/* PRICING MATRIX REFERENCE */}
       <div className="bg-[#0a0a0a] border border-neutral-800 p-6 mb-12 border-l-4 border-l-emerald-500">
         <div className="flex items-center gap-2 mb-6">
           <CreditCard className="w-5 h-5 text-emerald-400" />
@@ -255,6 +293,75 @@ export default function SalesDashboard() {
           )}
         </div>
       </div>
+
+      {/* --- NEW: NOTIFICATIONS SLIDE-OUT PANEL --- */}
+      {showNotifs && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-end">
+          <div className="bg-[#0a0a0a] border-l border-neutral-800 w-full max-w-md h-full shadow-2xl flex flex-col animate-in slide-in-from-right">
+            <div className="flex justify-between items-center bg-neutral-900 p-6 border-b border-neutral-800">
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-5 h-5 text-blue-400" />
+                <h3 className="font-black text-lg uppercase tracking-widest text-white">Admin Comms</h3>
+              </div>
+              <button onClick={() => setShowNotifs(false)} className="text-neutral-500 hover:text-white transition-colors"><X className="w-6 h-6" /></button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {messages.length === 0 ? (
+                <p className="text-xs text-neutral-500 italic">No incoming directives from HQ.</p>
+              ) : (
+                messages.map(msg => (
+                  <div key={msg.id} className="bg-neutral-950 border border-neutral-900 p-5 rounded shadow-lg">
+                    <div className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Shield className="w-3 h-3" /> Priority Directive
+                    </div>
+                    
+                    {/* The message from Raghav Singhania */}
+                    <p className="text-xs text-neutral-300 leading-relaxed whitespace-pre-line mb-6 border-l-2 border-blue-900/50 pl-3">
+                      {msg.message_text}
+                    </p>
+                    
+                    <div className="border-t border-neutral-900 pt-5">
+                      <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-widest block mb-3">Quick Response Options</span>
+                      
+                      {/* Quick Replies */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <button onClick={() => handleSendReply(msg.id, "On it! Initiating action now.")} className="bg-neutral-900 hover:bg-neutral-800 text-neutral-300 px-3 py-2 text-[10px] font-bold uppercase flex items-center gap-1.5 border border-neutral-800 transition-colors">
+                          <CheckCircle className="w-3 h-3"/> On It!
+                        </button>
+                        <button onClick={() => handleSendReply(msg.id, "Following up with the target today.")} className="bg-neutral-900 hover:bg-neutral-800 text-neutral-300 px-3 py-2 text-[10px] font-bold uppercase flex items-center gap-1.5 border border-neutral-800 transition-colors">
+                          <Clock className="w-3 h-3"/> Follow Up Today
+                        </button>
+                        <button onClick={() => handleSendReply(msg.id, "Require admin assistance on this.")} className="bg-neutral-900 hover:bg-neutral-800 text-neutral-300 px-3 py-2 text-[10px] font-bold uppercase flex items-center gap-1.5 border border-neutral-800 transition-colors">
+                          <HelpCircle className="w-3 h-3"/> Need Assist
+                        </button>
+                      </div>
+                      
+                      {/* Custom Reply */}
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Type custom response..." 
+                          value={customReplies[msg.id] || ""} 
+                          onChange={(e) => setCustomReplies({...customReplies, [msg.id]: e.target.value})} 
+                          className="flex-1 bg-black border border-neutral-800 p-2.5 text-xs text-white outline-none focus:border-neutral-500 transition-colors" 
+                        />
+                        <button 
+                          onClick={() => { if(customReplies[msg.id]) handleSendReply(msg.id, customReplies[msg.id]); }} 
+                          className="bg-white text-black p-2.5 hover:bg-neutral-300 transition-colors flex items-center justify-center"
+                        >
+                          <Send className="w-4 h-4"/>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

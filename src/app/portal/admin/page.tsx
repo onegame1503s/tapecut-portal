@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Users, DollarSign, LogOut, Loader2, ArrowUpRight, UserPlus, Target, ClipboardPaste, X, ExternalLink, ChevronDown, ChevronUp, CheckCircle, XCircle, MapPin, Globe, CreditCard, Save } from "lucide-react";
+import { Shield, Users, DollarSign, LogOut, Loader2, ArrowUpRight, UserPlus, Target, ClipboardPaste, X, ExternalLink, ChevronDown, ChevronUp, CheckCircle, XCircle, MapPin, Globe, CreditCard, Save, Trash2, Bell, RefreshCw } from "lucide-react";
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
@@ -89,6 +89,57 @@ export default function AdminDashboard() {
         fetchData();
       }
     } finally { setAssigningLead(false); }
+  };
+
+  // --- NEW: DELETE DEAL ---
+  const handleDeleteDeal = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this deal? This action is irreversible.")) return;
+    try {
+      await fetch(`/api/portal/deals?id=${id}`, { method: "DELETE" });
+      fetchData();
+    } catch { alert("Failed to delete deal."); }
+  };
+
+  // --- NEW: DELETE TARGET/LEAD ---
+  const handleDeleteLead = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this target? This action is irreversible.")) return;
+    try {
+      await fetch(`/api/portal/leads?id=${id}`, { method: "DELETE" });
+      fetchData();
+    } catch { alert("Failed to delete target."); }
+  };
+
+  // --- NEW: REASSIGN/REVOKE LEAD ---
+  const handleReassignLead = async (leadId: string, newRepId: string) => {
+    if (!newRepId) return;
+    if (!confirm(newRepId === "unassigned" ? "Revoke this target?" : "Reassign this target?")) return;
+    try {
+      const payload = newRepId === "unassigned" 
+        ? { lead_id: leadId, sales_rep_id: null, status: 'pending' } 
+        : { lead_id: leadId, sales_rep_id: newRepId, status: 'assigned' };
+        
+      await fetch("/api/portal/leads", { 
+        method: "PATCH", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload) 
+      });
+      fetchData();
+      setViewingRep(null); // Close modal to refresh UI cleanly
+    } catch { alert("Failed to modify assignment."); }
+  };
+
+  // --- NEW: SEND REMINDER (Raghav Singhania) ---
+  const handleSendReminder = async (repId: string, leadName: string) => {
+    const text = `URGENT: Status update required for ${leadName} via tapecut.info infrastructure.\n\nPlease provide an immediate status report on this assigned task.\n\nBest,\nRaghav Singhania`;
+    try {
+      const res = await fetch("/api/portal/messages", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ sender_id: "admin", receiver_id: repId, message_text: text }) 
+      });
+      if (res.ok) alert("Reminder dispatched successfully.");
+      else alert("Failed to dispatch reminder.");
+    } catch { alert("Network error."); }
   };
 
   const handleUpdatePricing = async (plan: any) => {
@@ -301,6 +352,10 @@ export default function AdminDashboard() {
                         <div className="mt-4 mb-2 bg-neutral-950 p-4 border border-neutral-800 text-xs text-neutral-300 max-w-lg animate-in fade-in">
                           <span className="block text-[10px] uppercase text-neutral-500 font-bold mb-1">Buffer: <span className="text-yellow-500 ml-1">{d.buffer_time}</span></span>
                           <span className="block text-[10px] uppercase text-neutral-500 font-bold mt-4 mb-2">Notes</span>{d.description || "No description provided."}
+                          {/* NEW: DELETE DEAL BUTTON */}
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteDeal(d.id); }} className="text-red-500 hover:text-red-400 flex items-center gap-1 text-[10px] uppercase font-bold mt-6 border border-red-900/50 bg-red-950/20 px-3 py-1.5 w-fit">
+                            <Trash2 className="w-3 h-3"/> Delete Record
+                          </button>
                         </div>
                       )}
                     </td>
@@ -358,6 +413,25 @@ export default function AdminDashboard() {
                         <div className="col-span-1 md:col-span-2 bg-black p-4 border border-neutral-800">
                           <span className="block text-[10px] uppercase text-neutral-600 font-bold mb-2">Pitch Strategy</span>
                           <span className="text-neutral-300">{lead.recommended_pitch || "—"}</span>
+                        </div>
+                        
+                        {/* NEW: TARGET CONTROL PANEL (REMIND, REASSIGN, DELETE) */}
+                        <div className="col-span-1 md:col-span-2 flex flex-wrap gap-3 mt-4 pt-4 border-t border-neutral-900">
+                          <button onClick={() => handleSendReminder(viewingRep.id, lead.business_name)} className="bg-blue-950 hover:bg-blue-900 text-blue-400 border border-blue-900 px-3 py-1.5 text-[10px] font-bold uppercase flex items-center gap-1 transition-colors">
+                            <Bell className="w-3 h-3"/> Remind
+                          </button>
+                          
+                          <select onChange={(e) => handleReassignLead(lead.id, e.target.value)} className="bg-black border border-neutral-800 text-neutral-400 px-3 py-1.5 text-[10px] font-bold uppercase outline-none focus:border-white transition-colors">
+                            <option value="">Reassign Target...</option>
+                            <option value="unassigned">Revoke (Unassign)</option>
+                            {salesReps.filter(r => r.id !== viewingRep.id).map(r => (
+                              <option key={r.id} value={r.id}>Transfer to: {r.email}</option>
+                            ))}
+                          </select>
+                          
+                          <button onClick={() => handleDeleteLead(lead.id)} className="bg-red-950 hover:bg-red-900 text-red-400 border border-red-900 px-3 py-1.5 text-[10px] font-bold uppercase flex items-center gap-1 ml-auto transition-colors">
+                            <Trash2 className="w-3 h-3"/> Delete Target
+                          </button>
                         </div>
                       </div>
                     )}
