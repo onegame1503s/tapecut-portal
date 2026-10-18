@@ -79,3 +79,25 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing lead ID' }, { status: 400 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('leads')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error: any) {
+    console.error('Delete Lead Error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
