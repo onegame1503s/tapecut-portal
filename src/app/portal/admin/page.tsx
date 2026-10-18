@@ -34,11 +34,13 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const [userRes, dealRes, leadRes, pricingRes] = await Promise.all([
-        fetch("/api/portal/admin/users"),
-        fetch("/api/portal/deals"),
-        fetch("/api/portal/leads"),
-        fetch("/api/portal/pricing")
+      // Added userRes back to the array and fetch list
+      const [userRes, dealRes, leadRes, pricingRes, msgRes] = await Promise.all([
+        fetch("/api/portal/admin/users", { cache: "no-store" }),
+        fetch("/api/portal/deals", { cache: "no-store" }),
+        fetch("/api/portal/leads", { cache: "no-store" }),
+        fetch("/api/portal/pricing", { cache: "no-store" }),
+        fetch("/api/portal/messages", { cache: "no-store" })
       ]);
 
       const userData = await userRes.json(); if (userData.success) setUsers(userData.users);

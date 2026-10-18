@@ -24,13 +24,13 @@ export default function SalesDashboard() {
     scope: "Full-Stack Web App (Next.js)", buffer_time: "3-5 Business Days", description: "",
   });
 
-  const fetchData = async () => {
+ const fetchData = async () => {
     try {
       const [dealRes, leadRes, pricingRes, msgRes] = await Promise.all([
-        fetch("/api/portal/deals"),
-        fetch("/api/portal/leads"),
-        fetch("/api/portal/pricing"),
-        fetch("/api/portal/messages") // Fetches inbox
+        fetch("/api/portal/deals", { cache: "no-store" }),
+        fetch("/api/portal/leads", { cache: "no-store" }),
+        fetch("/api/portal/pricing", { cache: "no-store" }),
+        fetch("/api/portal/messages", { cache: "no-store" }) // Fetches inbox
       ]);
 
       const dealData = await dealRes.json(); if (dealData.success) setDeals(dealData.deals);
