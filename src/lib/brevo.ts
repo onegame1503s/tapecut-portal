@@ -12,7 +12,8 @@ export async function sendPortalOTP(email: string, otp: string) {
       "api-key": apiKey,
     },
     body: JSON.stringify({
-      sender: { name: "Tapecut Studios Identity Access", email: "admin@tapecut.info" },
+      // Inside sendPortalOTP:
+sender: { name: "Tapecut Studios Identity Access", email: "auth@tapecut.info" },
       to: [{ email }],
       subject: `[SECURE] Verification Token — ${otp}`,
       htmlContent: `
@@ -158,7 +159,8 @@ export async function sendAdminDealAlert(adminEmails: string[], dealDetails: {
       "api-key": apiKey,
     },
     body: JSON.stringify({
-      sender: { name: "Tapecut Executive Ledger", email: "admin@tapecut.info" },
+      // Inside sendAdminDealAlert:
+sender: { name: "Tapecut Executive Ledger", email: "auth@tapecut.info" },
       to: recipients,
       subject: `[DEAL COMMITTED] ₹${dealDetails.contract_value.toLocaleString()} — ${dealDetails.client_name}`,
       htmlContent: `
