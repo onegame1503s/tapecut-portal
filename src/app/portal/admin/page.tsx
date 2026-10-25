@@ -71,15 +71,57 @@ export default function AdminDashboard() {
     } finally { setIsAdding(false); }
   };
 
+  // --- NEW: INTELLIGENT HEURISTIC PARSER ---
   const handlePasteRawData = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
-    const cols = e.clipboardData.getData("Text").split(/\t/); 
+    const pastedText = e.clipboardData.getData("Text");
+    
+    // Split by tab or newline and filter out empty or "None" strings
+    const parts = pastedText.split(/[\t\n]+/).map(p => p.trim()).filter(p => p.length > 0 && !/^(none|n\/a|-|null)$/i.test(p));
+    
+    let extracted = {
+      business_name: "", category: "", phone_number: "", address: "", 
+      website_health: "", priority: "", recommended_pitch: "", 
+      google_maps_url: "", discovered_website: ""
+    };
+
+    const unassigned: string[] = [];
+
+    // Analyze each piece of pasted data to figure out what it is regardless of order
+    parts.forEach(str => {
+      if (/google\.com\/maps|maps\.app\.goo\.gl/i.test(str)) {
+        extracted.google_maps_url = str;
+      } else if (/^https?:\/\//i.test(str)) {
+        extracted.discovered_website = str;
+      } else if (/^[+\d\s\-\.()]{8,18}$/.test(str) && /\d{4}/.test(str)) {
+        extracted.phone_number = str;
+      } else if (/(high|medium|low|urgent)/i.test(str) && str.length < 25) {
+        extracted.priority = str;
+      } else if (/(no standalone|poor|average|good|excellent|needs improvement)/i.test(str) && str.length < 35) {
+        extracted.website_health = str;
+      } else if (/(floor|shop|mall|road|street|nagar|delhi|kunj|block|sector|phase|marg)/i.test(str) && str.length > 10 && !/(pitch|offer|propose)/i.test(str)) {
+        extracted.address = str;
+      } else if (/(pitch|portfolio|booking|seo|next\.js|website|setup|build|offer|propose)/i.test(str) && str.length > 15) {
+        extracted.recommended_pitch = str;
+      } else {
+        unassigned.push(str);
+      }
+    });
+
+    // Fill in remaining text fields with unclassified data
+    unassigned.forEach(str => {
+      if (!extracted.business_name) extracted.business_name = str;
+      else if (!extracted.category) extracted.category = str;
+      else if (!extracted.recommended_pitch) extracted.recommended_pitch += (extracted.recommended_pitch ? " " : "") + str;
+      else if (!extracted.address) extracted.address += (extracted.address ? " " : "") + str;
+    });
+
     setLeadForm(prev => ({
-      ...prev, business_name: cols[0]?.trim() || "", category: cols[1]?.trim() || "", phone_number: cols[2]?.trim() || "",
-      address: cols[3]?.trim() || "", website_health: cols[4]?.trim() || "", priority: cols[5]?.trim() || "",
-      recommended_pitch: cols[6]?.trim() || "", google_maps_url: cols[7]?.trim() || "", discovered_website: cols[8]?.trim() || "",
+      ...prev,
+      ...extracted
     }));
   };
+  // -----------------------------------------
 
   const handleAssignLead = async (e: React.FormEvent) => {
     e.preventDefault(); setAssigningLead(true);
