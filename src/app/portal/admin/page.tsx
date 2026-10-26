@@ -174,12 +174,22 @@ export default function AdminDashboard() {
 
   // --- NEW: SEND REMINDER (Raghav Singhania) ---
   const handleSendReminder = async (repId: string, leadName: string) => {
+    // Find the admin user dynamically from the fetched users array to get the real UUID
+    const adminUser = users.find(u => u.role === 'admin');
+    
+    if (!adminUser) {
+      alert("System Error: Could not locate your Admin UUID to send the message.");
+      return;
+    }
+
     const text = `URGENT: Status update required for ${leadName} via tapecut.info infrastructure.\n\nPlease provide an immediate status report on this assigned task.\n\nBest,\nRaghav Singhania`;
+    
     try {
       const res = await fetch("/api/portal/messages", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ sender_id: "admin", receiver_id: repId, message_text: text }) 
+        // Swap out the "admin" string with the verified admin UUID
+        body: JSON.stringify({ sender_id: adminUser.id, receiver_id: repId, message_text: text }) 
       });
       if (res.ok) alert("Reminder dispatched successfully.");
       else alert("Failed to dispatch reminder.");
