@@ -174,7 +174,7 @@ export default function AdminDashboard() {
 
   // --- NEW: SEND REMINDER (Raghav Singhania) ---
   const handleSendReminder = async (repId: string, leadName: string) => {
-    const ADMIN_UUID = "d07c417d-d388-4abc-8176-058e6640a5f9";
+    const ADMIN_UUID = "c70bf89f-c41f-4447-8f86-9759ef5d9ac9";
     
     const text = `URGENT: Status update required for ${leadName} via tapecut.info infrastructure.\n\nPlease provide an immediate status report on this assigned task.\n\nBest,\nRaghav Singhania`;
     
